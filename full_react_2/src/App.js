@@ -5,6 +5,7 @@ const App = () => {
   const [tooManyResult, setTooManyResult] = useState(false);
   const [noResult, setNoResult] = useState(true);
   const [result, setResult] = useState([]);
+  const [rateLimit, setRateLimit] = useState(false);
 
   /*
   Call the github API
@@ -17,24 +18,35 @@ const App = () => {
       method: 'GET'
     }).then(response => {
       if(response.status === 200) {
+        setRateLimit(false);
         return response.json();
       } else if(response.status===403) {
-        console.log('Rate limit exceeded');
-        throw new Error('Rate limit exceeded');
+        setRateLimit(true);
       }
+    }).then(resJson => {
+      if(rateLimit)
+        return (403);
+      if(resJson){
+        if(resJson.total_count !== resJson.items.length)
+          setTooManyResult(true);
+        else
+          setTooManyResult(false)
+        if(resJson.total_count !== 0)
+          setNoResult(false);
+        else
+          setNoResult(true);
+        APIresult=resJson.items;
+        setResult(APIresult);
+      }
+
+    }).catch((error) => {
+      if(rateLimit)
+        console.log("Rate limit exceeded")
+      else 
+        console.log(error)
     })
+
     
-    if(resJson.total_count !== resJson.items.length)
-      setTooManyResult(true);
-    else
-      setTooManyResult(false)
-    if(resJson.total_count !== 0)
-      setNoResult(false);
-    else
-      setNoResult(true);
-    APIresult=resJson.items;
-    setResult(APIresult);
-    return APIresult;
   }
 
   return (
@@ -51,9 +63,11 @@ const App = () => {
 
       <div>
       { 
-      !noResult ? result.map((user) => {
-        return (<div>{user.login}</div>)
-      }):<div className="tooManyResult"> No Result </div>
+        !noResult && !rateLimit ? result.map((user) => {
+          return (<div key={user.id}>{user.login}</div>)
+        }): !rateLimit ? <div className="tooManyResult"> No Result </div>
+        :
+        <div className="tooManyResult">Rate Limit exceeded</div>
       }
 
       </div>
